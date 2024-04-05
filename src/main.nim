@@ -1,8 +1,6 @@
-#pack every compile
-static: echo staticExec("faupack -p:../assets-raw/sprites -o:../assets/atlas --max:2048 --outlineFolder=outlined/")
-
-import fau/presets/[basic, effects], fau/g2/[font, ui, bloom], fau/assets
+import core, fau/presets/[basic, effects], fau/g2/[font, ui, bloom], fau/assets
 import std/[tables, sequtils, algorithm, macros, options, random, math, strformat, deques]
+import pkg/polymorph
 import types, vars, saveio, patterns, maps, sugar, units
 
 include components
@@ -62,8 +60,7 @@ onEcsBuilt:
     discard newEntityWith(Input(nextBeat: -1), Pos(), GridPos(vec: pos), UnitDraw(unit: aunit))
 
   proc reset() =
-    sysAll.clear()
-    sysRunDelay.clear()
+    resetEntityStorage()
 
     #stop old music
     if state.voice.int != 0:
@@ -86,7 +83,11 @@ onEcsBuilt:
     reset()
 
     #start with first unit
-    makeUnit(vec2i(), if save.lastUnit != nil: save.lastUnit else: save.units[0])
+    makeUnit(vec2i(0, 0), if save.lastUnit != nil: save.lastUnit else: save.units[0])
+
+    #for multichar testing
+    #makeUnit(vec2i(1, 0), unitZenith)
+    #makeUnit(vec2i(2, 0), unitOct)
 
     state.map = next
     state.voice = state.map.getSound.play()
@@ -160,7 +161,7 @@ proc getTexture*(unit: Unit, name: string = ""): Texture =
 
 proc rollUnit*(): Unit =
   #very low chance, as it is annoying
-  if chance(1f / 10f):
+  if chance(1f / 100f):
     return unitNothing
 
   #boulder is very rare now
@@ -168,8 +169,7 @@ proc rollUnit*(): Unit =
     return unitBoulder
 
   #not all units; alpha and boulder are excluded
-  return sample([unitMono, unitOct, unitCrawler, unitZenith, unitQuad, unitOxynoe, unitSei, unitRonaldo, unitMbappe])
-    
+  return sample([unitMono, unitOct, unitCrawler, unitZenith, unitQuad, unitOxynoe, unitSei])
 
 proc fading(): bool = fadeTarget != nil
 
@@ -362,7 +362,7 @@ makeSystem("updateMusic", []):
     let fft = getFft()
 
     for i in 0..<fftSize:
-      fftValues[i] = lerp(fftValues[i], fft[i].pow(0.6f), 25f * fau.delta)
+      lerp(fftValues[i], fft[i].pow(0.6f), 25f * fau.delta)
     
     if state.newTurn:
       state.moveBeat = 1f
@@ -390,6 +390,13 @@ makeSystem("updateMusic", []):
 makeTimedSystem()
 
 makeSystem("input", [GridPos, Input, UnitDraw, Pos]):
+  var playerIndex = 0
+
+  #different axes for different characters
+  let 
+    axis1 = axisTap2(keyA, keyD, KeyCode.keyS, keyW)
+    axis2 = axisTap2(keyLeft, keyRight, keyDown, keyUp)
+
   all:
     const switchKeys = [key1, key2, key3, key4, key5, key6, key7, key8, key9, key0]
 
@@ -401,6 +408,7 @@ makeSystem("input", [GridPos, Input, UnitDraw, Pos]):
           item.input.lastSwitchTime = musicTime()
           effectCharSwitch(item.pos.vec + vec2(0f, 6f.px))
           save.lastUnit = unit
+          mobileUnitSwitch = -1
           break
 
     let canMove = if state.rawBeat > 0.5:
@@ -417,7 +425,18 @@ makeSystem("input", [GridPos, Input, UnitDraw, Pos]):
     var 
       moved = false
       failed = false
-      vec = if musicTime() >= item.input.lastInputTime and item.unitDraw.unit.unmoving.not: axisTap2(keyA, keyD, KeyCode.keyS, keyW) + axisTap2(keyLeft, keyRight, keyDown, keyUp) + mobilePad else: vec2()
+      validInput = musicTime() >= item.input.lastInputTime and item.unitDraw.unit.unmoving.not
+      vec = if validInput: mobilePad else: vec2()
+    
+    #2 player - separate controls
+    #1 (or many) players - shared controls
+    if sysInput.groups.len == 2:
+      if playerIndex == 0:
+        vec += axis1
+      else:
+        vec += axis2
+    else:
+      vec += axis1 + axis2
     
     #reset pad state after polling
     mobilePad = vec2()
@@ -428,7 +447,7 @@ makeSystem("input", [GridPos, Input, UnitDraw, Pos]):
       vec = vec2()
 
     if vec.zero.not:
-      vec = vec.lim(1)
+      vec.lim(1)
       
       if canMove:
         item.input.fails = 0
@@ -446,7 +465,7 @@ makeSystem("input", [GridPos, Input, UnitDraw, Pos]):
 
       vec = vec2()
 
-    item.unitDraw.scl = item.unitDraw.scl.lerp(1f, 12f * fau.delta)
+    item.unitDraw.scl.lerp(1f, 12f * fau.delta)
 
     if failed:
       effectFail(item.pos.vec, life = beatSpacing())
@@ -460,7 +479,7 @@ makeSystem("input", [GridPos, Input, UnitDraw, Pos]):
       if item.unitDraw.walkTime < 0f:
         item.unitDraw.walkTime = 0f
 
-    item.unitDraw.shieldTime = item.unitDraw.shieldTime.lerp(item.input.shielded.float32, 10f * fau.delta)
+    item.unitDraw.shieldTime.lerp(item.input.shielded.float32, 10f * fau.delta)
 
     item.unitDraw.beatScl -= fau.delta / beatSpacing()
     item.unitDraw.beatScl = max(0f, item.unitDraw.beatScl)
@@ -510,6 +529,8 @@ makeSystem("input", [GridPos, Input, UnitDraw, Pos]):
         state.beatStats = "early"
     
     item.input.justMoved = moved
+  
+    playerIndex.inc
 
 makeSystem("runDelay", [RunDelay]):
   if state.newTurn:
@@ -861,4 +882,5 @@ preloadFolder("textures")
 #as are map music files
 preloadFolder("maps")
 
-launchFau(initParams(title = "Animdustry"))
+makeEcsCommit("run")
+initFau(run, params = initParams(title = "Animdustry"))

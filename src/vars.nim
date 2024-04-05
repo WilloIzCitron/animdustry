@@ -14,6 +14,7 @@ const
   completionCopper* = 999999
   defaultMapReward* = 8
 
+
   colorAccent* = %"ffd37f"
   colorUi* = %"bfecf3"
   colorUiDark* = %"57639a"

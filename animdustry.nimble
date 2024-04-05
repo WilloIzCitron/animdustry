@@ -7,7 +7,7 @@ bin           = @["main"]
 binDir        = "build"
 
 requires("nim >= 2.0.0")
-requires("https://github.com/Anuken/fau#" & staticExec("git -C fau rev-parse HEAD").replace("\n", "").replace("\r", ""))
+requires("https://github.com/WilloIzCitron/fau#" & staticExec("git -C fau rev-parse HEAD").replace("\n", "").replace("\r", ""))
 requires("msgpack4nim == 0.4.4")
 
 import strformat, os, json, sequtils

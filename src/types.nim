@@ -1,4 +1,4 @@
-import ecs, tables, options
+import tables, options
 
 type Beatmap* = ref object
   name*: string

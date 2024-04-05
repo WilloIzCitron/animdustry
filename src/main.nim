@@ -1,7 +1,7 @@
 #pack every compile
 static: echo staticExec("faupack -p:../assets-raw/sprites -o:../assets/atlas --max:2048 --outlineFolder=outlined/")
 
-import ecs, fau/presets/[basic, effects], fau/g2/[font, ui, bloom], fau/assets
+import fau/presets/[basic, effects], fau/g2/[font, ui, bloom], fau/assets
 import std/[tables, sequtils, algorithm, macros, options, random, math, strformat, deques]
 import types, vars, saveio, patterns, maps, sugar, units
 

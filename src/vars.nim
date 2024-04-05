@@ -15,7 +15,6 @@ const
   defaultMapReward* = 8
 
   colorAccent* = %"ffd37f"
-  accentBlue* = %"ffd37f"
   colorUi* = %"bfecf3"
   colorUiDark* = %"57639a"
   colorHit* =  %"ff584c"

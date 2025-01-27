@@ -1,4 +1,5 @@
 import types, fau/g2/[font, ui], std/[options, deques]
+import fau/[fmath, globals, color, patch, batch]
 
 const
   #pixels
